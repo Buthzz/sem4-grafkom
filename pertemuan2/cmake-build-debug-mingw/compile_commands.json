@@ -1,0 +1,8 @@
+[
+{
+  "directory": "F:/CLionProjects/sem4-grafkom/pertemuan2/cmake-build-debug-mingw",
+  "command": "C:\\mingw64\\bin\\c++.exe -IC:/mingw64/include -g -std=gnu++17 -fdiagnostics-color=always -o CMakeFiles\\pertemuan4.dir\\main.cpp.obj -c F:\\CLionProjects\\sem4-grafkom\\pertemuan2\\main.cpp",
+  "file": "F:/CLionProjects/sem4-grafkom/pertemuan2/main.cpp",
+  "output": "F:/CLionProjects/sem4-grafkom/pertemuan2/cmake-build-debug-mingw/CMakeFiles/pertemuan4.dir/main.cpp.obj"
+}
+]

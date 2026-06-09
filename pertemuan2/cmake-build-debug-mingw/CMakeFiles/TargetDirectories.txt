@@ -1,0 +1,3 @@
+F:/CLionProjects/sem4-grafkom/pertemuan2/cmake-build-debug-mingw/CMakeFiles/pertemuan4.dir
+F:/CLionProjects/sem4-grafkom/pertemuan2/cmake-build-debug-mingw/CMakeFiles/edit_cache.dir
+F:/CLionProjects/sem4-grafkom/pertemuan2/cmake-build-debug-mingw/CMakeFiles/rebuild_cache.dir

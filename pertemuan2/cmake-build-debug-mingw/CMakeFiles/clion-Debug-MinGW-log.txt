@@ -1,0 +1,4 @@
+C:\Users\akufa\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=C:/Users/akufa/AppData/Local/Programs/CLion/bin/ninja/win/x64/ninja.exe -G Ninja -S F:\CLionProjects\sem4-grafkom\pertemuan2 -B F:\CLionProjects\sem4-grafkom\pertemuan2\cmake-build-debug-mingw
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: F:/CLionProjects/sem4-grafkom/pertemuan2/cmake-build-debug-mingw
