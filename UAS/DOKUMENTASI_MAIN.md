@@ -1,11 +1,81 @@
 # Panduan Studi Kelompok & Dokumentasi Kode Sumber `main.cpp`
 ## Proyek UAS Grafika Komputer (Labirin 3D & Animasi NRP)
 
-Dokumentasi ini dirancang secara khusus untuk **studi kelompok** dalam mempersiapkan **Asistensi Demo**. Panduan ini membedah arsitektur kode secara menyeluruh, mencakup pustaka yang digunakan, fungsi-fungsi OpenGL/GLUT, analisis algoritma, alur eksekusi program, serta panduan modifikasi parameter ("jika diubah akan menjadi apa").
+Dokumentasi ini dirancang secara khusus untuk **studi kelompok** dalam mempersiapkan **Asistensi Demo**. Panduan ini membedah arsitektur kode secara menyeluruh, mencakup pemetaan kriteria penilaian langsung ke baris kode, penjelasan pustaka, fungsi OpenGL/GLUT, analisis algoritma, serta panduan modifikasi parameter ("jika diubah akan menjadi apa").
 
 ---
 
-## 1. Pustaka (Libraries) & API yang Digunakan
+## 1. Panduan Demo: Pemetaan Kriteria Penilaian ke Baris Kode
+
+Berikut adalah contekan cepat (*cheat sheet*) untuk menjawab pertanyaan asisten praktikum saat demo berdasarkan 12 Kriteria Penilaian yang diujikan:
+
+### Kriteria 1: Semua vertex diberi vektor normalnya (Bobot: 25)
+*   **Lokasi Kode**: Fungsi `drawDinding` (baris 57-109), `drawPlayer` (baris 123-175), `drawLantai` (baris 190-242), dan `drawNRP3D` (baris 274-741).
+*   **Cara Pembuktian**: Tunjukkan perintah `glNormal3f(nx, ny, nz)` sebelum perintah `glVertex3f(...)` di setiap poligon.
+*   **Penjelasan**: Vektor normal menentukan arah hadap permukaan objek secara tegak lurus. Tanpa normal ini, OpenGL tidak bisa menghitung pantulan cahaya (diffuse dan specular) dari lampu, sehingga objek hanya akan terlihat rata/datar (*flat* tanpa shading).
+
+### Kriteria 2: Semua objek diberi material/warna sendiri (Bobot: 5)
+*   **Lokasi Kode**:
+    *   **Dinding (Merah)**: `drawDinding` (baris 48-55)
+    *   **Pemain (Biru)**: `drawPlayer` (baris 114-121)
+    *   **Lantai (Abu-abu)**: `drawLantai` (baris 181-188)
+    *   **NRP (Hijau)**: `drawNRP3D` (baris 265-272)
+*   **Cara Pembuktian**: Tunjukkan deklarasi array material (`mat_ambient`, `mat_diffuse`, `mat_specular`, `mat_shininess`) lalu panggil `glMaterialfv(GL_FRONT, ..., ...)`.
+*   **Penjelasan**: Kami menggunakan model material bawaan OpenGL (`glMaterialfv` dengan target `GL_FRONT`) dan menghindari pewarnaan datar `glColor` agar objek merespons intensitas cahaya secara realistis (memantulkan kilau dan bayangan).
+
+### Kriteria 3: Sumber cahaya Ambient, Diffuse, Specular (Bobot: 5)
+*   **Lokasi Kode**: Fungsi `myinit` (baris 1069-1091) dan `updateLighting` (baris 807-855).
+*   **Cara Pembuktian**:
+    *   **Ambient Global**: `GL_LIGHT_MODEL_AMBIENT` (baris 1070-1071)
+    *   **Diffuse Light (`LIGHT0`)**: Berkas cahaya dari atas `(8.5, 8.5, 10.0)` menggunakan parameter `GL_DIFFUSE` (baris 1074-1079).
+    *   **Specular Light (`LIGHT1`)**: Berkas cahaya samping `(0.0, 0.0, 5.0)` menggunakan parameter `GL_SPECULAR` (baris 1082-1087).
+
+### Kriteria 4: Mode view ketiga (FPS Camera) ketika tombol V ditekan (Bobot: 5)
+*   **Lokasi Kode**: Fungsi `keyboard` pada kasus `'v' || 'V'` (baris 956-975) dan fungsi `display` (baris 879-886).
+*   **Cara Pembuktian**: Tunjukkan bahwa `viewMode` diubah antara 0 (2D Ortho), 1 (3D Isometrik), dan 2 (3D FPS). Tekan tombol `V` pada program untuk mendemonstrasikan perubahan sudut pandang.
+
+### Kriteria 5: Navigasi berjalan di dalam maze menggunakan tombol panah (Bobot: 25)
+*   **Lokasi Kode**: Fungsi `specialKey` (baris 1007-1048).
+*   **Cara Pembuktian**:
+    *   `GLUT_KEY_UP` & `GLUT_KEY_DOWN` mengubah koordinat kamera `camPosX` dan `camPosY` berdasarkan arah hadap horizontal `camYaw` (baris 1016-1025).
+    *   `GLUT_KEY_LEFT` & `GLUT_KEY_RIGHT` mengubah nilai sudut hadap `camYaw` kamera (baris 1026-1033).
+    *   Sistem tabrakan mencegah kamera menembus dinding (`mazeGrid[tileY][tileX] == false` pada baris 1039-1044).
+
+### Kriteria 6: Posisi awal kamera FPS di pintu masuk dan menghadap ke bawah (Bobot: 5)
+*   **Lokasi Kode**: Fungsi `keyboard` saat tombol `V` pertama kali ditekan ke `viewMode == 2` (baris 958-964).
+*   **Cara Pembuktian**:
+    *   `camPosX = 7.5f` & `camPosY = 1.5f` (Pintu masuk labirin berada di grid X=7, Y=0. Menggunakan offset Y=1.5 agar kamera berada di dalam sel pertama).
+    *   `camYaw = 90.0f` (Radian 90 derajat searah sumbu Y positif, yaitu menghadap ke arah dalam/bawah grid labirin).
+
+### Kriteria 7: Tombol 1 untuk men-On/Off Ambient Light (Bobot: 5)
+*   **Lokasi Kode**: Fungsi `keyboard` (baris 984-987) dan `updateLighting` (baris 808-819).
+*   **Cara Pembuktian**: Tekan tombol `1` di keyboard $\rightarrow$ bayangan bayang-bayang dasar di area tertutup labirin akan langsung menjadi hitam pekat (off) atau terang abu-abu (on).
+
+### Kriteria 8: Tombol 2 untuk men-On/Off Diffuse Light (Bobot: 5)
+*   **Lokasi Kode**: Fungsi `keyboard` (baris 988-991) dan `updateLighting` (baris 821-833).
+*   **Cara Pembuktian**: Tekan tombol `2` di keyboard $\rightarrow$ pencahayaan utama dari arah atas akan padam (`glDisable(GL_LIGHT0)`).
+
+### Kriteria 9: Tombol 3 untuk men-On/Off Specular Light (Bobot: 5)
+*   **Lokasi Kode**: Fungsi `keyboard` (baris 992-995) dan `updateLighting` (baris 835-847).
+*   **Cara Pembuktian**: Tekan tombol `3` di keyboard $\rightarrow$ titik kilap berkilau pada kubus pemain (biru) dan angka NRP (hijau) akan hilang (`glDisable(GL_LIGHT1)`).
+
+### Kriteria 10: Tombol 4 untuk mengubah mode siang/malam (Bobot: 5)
+*   **Lokasi Kode**: Fungsi `keyboard` (baris 996-999) dan `updateLighting` (baris 850-854).
+*   **Cara Pembuktian**: Tekan tombol `4` di keyboard $\rightarrow$ warna latar belakang (`glClearColor`) akan berubah dari putih benderang (siang) menjadi biru malam gelap gulita (malam), serta warna intensitas lampu meredup kebiruan.
+
+### Kriteria 11: Tombol 5 untuk men-On/Off transparansi dinding (Bobot: 5)
+*   **Lokasi Kode**: Fungsi `keyboard` (baris 1000-1002) dan fungsi `display` (baris 896-911).
+*   **Cara Pembuktian**: Tekan tombol `5` di keyboard $\rightarrow$ seluruh dinding merah labirin akan langsung berubah menjadi tembus pandang (semi-transparan dengan alpha 0.3).
+
+### Kriteria 12: Deteksi tabrakan (sekali saja) antara player dan NRP (Bobot: 5)
+*   **Lokasi Kode**: Fungsi `cekTabrakan` (baris 857-868).
+*   **Cara Pembuktian**:
+    *   Fungsi ini mengecek apakah indeks grid pemain `playerX` dan `playerY` sama dengan posisi grid integer NRP `nrpTileX` dan `nrpTileY`.
+    *   **Sekali saja**: Menggunakan flag `if (collisionDetected) return;` di baris 858. Begitu tabrakan terjadi sekali, status diset `true` dan program tidak akan mencetak tulisan berulang kali sampai labirin di-reset menggunakan tombol `C`.
+
+---
+
+## 2. Pustaka (Libraries) & API yang Digunakan
 
 Aplikasi ini menggunakan beberapa pustaka C++ standar dan pustaka grafis OpenGL/GLUT:
 
@@ -19,7 +89,7 @@ Aplikasi ini menggunakan beberapa pustaka C++ standar dan pustaka grafis OpenGL/
 
 ---
 
-## 2. Kamus Istilah API OpenGL & GLUT (Fungsi Bawaan)
+## 3. Kamus Istilah API OpenGL & GLUT (Fungsi Bawaan)
 
 Asisten dosen sering menanyakan arti dari fungsi-fungsi OpenGL/GLUT yang diawali dengan awalan `gl`, `glu`, atau `glut`. Berikut adalah fungsi-fungsi yang digunakan dalam kode ini beserta kegunaannya:
 
@@ -74,7 +144,7 @@ Asisten dosen sering menanyakan arti dari fungsi-fungsi OpenGL/GLUT yang diawali
 
 ---
 
-## 3. Alur Eksekusi Program (Flow of Execution)
+## 4. Alur Eksekusi Program (Flow of Execution)
 
 Berikut adalah urutan jalannya program dari awal dijalankan hingga interaksi pengguna terjadi:
 
@@ -102,7 +172,7 @@ graph TD
 
 ---
 
-## 4. Analisis Struktur Fungsi & Sample Code
+## 5. Analisis Struktur Fungsi & Sample Code
 
 Berikut adalah daftar fungsi utama di dalam kode `main.cpp` beserta cuplikan kodenya untuk dipelajari:
 
@@ -204,7 +274,7 @@ Bagian ini mengatur bagaimana dinding digambar tembus pandang jika diaktifkan.
 
 ---
 
-## 5. Studi Kasus: "Jika Diubah Jadi Apa?" (Panduan Modifikasi)
+## 6. Studi Kasus: "Jika Diubah Jadi Apa?" (Panduan Modifikasi)
 
 Asisten praktikum sering menanyakan pemahaman kode dengan skenario perubahan. Berikut adalah jawaban cepat yang dapat Anda berikan:
 
@@ -255,7 +325,7 @@ Asisten praktikum sering menanyakan pemahaman kode dengan skenario perubahan. Be
 
 ---
 
-## 6. Cheat Sheet Kontrol Cepat Asistensi
+## 7. Cheat Sheet Kontrol Cepat Asistensi
 
 | Kategori | Tombol | Aksi / Efek Visual |
 | :--- | :--- | :--- |
