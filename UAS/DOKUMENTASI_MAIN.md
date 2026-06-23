@@ -1,7 +1,7 @@
 # Panduan Studi Kelompok & Dokumentasi Kode Sumber `main.cpp`
 ## Proyek UAS Grafika Komputer (Labirin 3D & Animasi NRP)
 
-Dokumentasi ini dirancang secara khusus untuk **studi kelompok** dalam mempersiapkan **Asistensi Demo**. Panduan ini membedah arsitektur kode secara menyeluruh, mencakup pemetaan kriteria penilaian langsung ke baris kode, penjelasan pustaka, fungsi OpenGL/GLUT, analisis algoritma, serta panduan modifikasi parameter ("jika diubah akan menjadi apa").
+Dokumentasi ini dirancang secara khusus untuk **studi kelompok** dalam mempersiapkan **Asistensi Demo**. Panduan ini membedah arsitektur kode secara menyeluruh, mencakup pemetaan kriteria penilaian langsung ke baris kode, penjelasan pustaka, fungsi OpenGL/GLUT, analisis algoritma, panduan modifikasi parameter, serta **daftar pertanyaan jebakan (Q&A) yang sering ditanyakan asisten**.
 
 ---
 
@@ -24,7 +24,7 @@ Berikut adalah contekan cepat (*cheat sheet*) untuk menjawab pertanyaan asisten 
 *   **Penjelasan**: Kami menggunakan model material bawaan OpenGL (`glMaterialfv` dengan target `GL_FRONT`) dan menghindari pewarnaan datar `glColor` agar objek merespons intensitas cahaya secara realistis (memantulkan kilau dan bayangan).
 
 ### Kriteria 3: Sumber cahaya Ambient, Diffuse, Specular (Bobot: 5)
-*   **Lokasi Kode**: Fungsi `myinit` (baris 1069-1091) dan `updateLighting` (baris 807-855).
+*   **Lokasi Kode**: Fungsi `myinit` (baris 1069-1091) and `updateLighting` (baris 807-855).
 *   **Cara Pembuktian**:
     *   **Ambient Global**: `GL_LIGHT_MODEL_AMBIENT` (baris 1070-1071)
     *   **Diffuse Light (`LIGHT0`)**: Berkas cahaya dari atas `(8.5, 8.5, 10.0)` menggunakan parameter `GL_DIFFUSE` (baris 1074-1079).
@@ -75,7 +75,39 @@ Berikut adalah contekan cepat (*cheat sheet*) untuk menjawab pertanyaan asisten 
 
 ---
 
-## 2. Pustaka (Libraries) & API yang Digunakan
+## 2. Tanya Jawab (Q&A) / Pertanyaan Jebakan Asisten
+
+Berikut adalah kumpulan pertanyaan teoretis dan praktis yang sering dilontarkan oleh asisten saat proses demo berlangsung, beserta panduan jawaban terbaiknya:
+
+### Q1: "Kenapa aplikasi ini memakai `GLUT_DOUBLE` (Double Buffering) saat inisialisasi? Apa bedanya dengan `GLUT_SINGLE`?"
+*   **Jawaban**: `GLUT_DOUBLE` menggunakan dua buffer (buffer depan yang ditampilkan ke layar dan buffer belakang tempat menggambar). Saat animasi bergerak, rendering dilakukan di buffer belakang, lalu ditukar secara instan menggunakan `glutSwapBuffers()`. Hal ini mencegah efek berkedip (*flickering*). Jika memakai `GLUT_SINGLE`, penggambaran langsung dilakukan di layar sehingga pengguna dapat melihat proses penggambaran baris demi baris yang memicu kedipan layar.
+
+### Q2: "Kenapa koordinat lantai dasar digambar di posisi `Z = -0.01` hingga `-0.21`, bukan pas di `0.0`?"
+*   **Jawaban**: Untuk mencegah masalah **Z-fighting** (perebutan kedalaman pixel). Jika lantai digambar tepat di koordinat `Z = 0.0`, posisinya akan berimpit tepat dengan sisi bawah kubus dinding dan player yang juga berada di `Z = 0.0`. OpenGL akan kebingungan menentukan pixel mana yang harus digambar di atas, menyebabkan layar berkedip dengan pola aneh saat kamera bergerak. Memberikan offset tipis (`-0.01`) memastikan lantai berada mutlak di bawah objek lainnya.
+
+### Q3: "Mengapa objek transparan (dinding) harus digambar belakangan setelah objek solid (lantai, player, NRP)?"
+*   **Jawaban**: Dalam grafika komputer 3D, efek transparansi (*alpha blending*) menggabungkan warna objek transparan (sumber) dengan warna objek yang sudah ada di belakangnya pada frame buffer (tujuan). Jika dinding transparan digambar pertama kali, frame buffer masih kosong (hanya warna latar), sehingga objek solid yang digambar belakangan akan menimpa dinding dan efek tembus pandangnya akan rusak/hilang.
+
+### Q4: "Kenapa kamu menggunakan `glDepthMask(GL_FALSE)` saat menggambar dinding transparan?"
+*   **Jawaban**: Agar penulisan ke Depth Buffer (*Z-buffer*) dimatikan sementara selama penggambaran dinding transparan. Jika tidak dimatikan, OpenGL akan mengira area tersebut sudah terisi oleh objek pekat terdepan, sehingga objek solid yang posisinya berada di belakang dinding tidak akan digambar sama sekali akibat tersaring oleh *Depth Test*.
+
+### Q5: "Apa bedanya `GL_SMOOTH` dan `GL_FLAT` pada fungsi `glShadeModel`?"
+*   **Jawaban**: `GL_SMOOTH` mengaktifkan Gouraud Shading, yaitu melakukan interpolasi warna dan pencahayaan secara halus di sepanjang permukaan poligon berdasarkan normal di setiap verteks. Sedangkan `GL_FLAT` memberikan satu warna seragam datar pada seluruh permukaan poligon berdasarkan normal dari verteks terakhir, sehingga objek terlihat kaku dan kotak-kotak (*low-poly*).
+
+### Q6: "Bagaimana logika matematika di balik pergerakan maju-mundur kamera FPS?"
+*   **Jawaban**: Sudut hadap horizontal kamera disimpan di variabel `camYaw` dalam derajat. Kita ubah ke radian: `radYaw = camYaw * PI / 180.0f`. 
+    *   Untuk melangkah maju: `nextX = camPosX + cos(radYaw) * moveSpeed` dan `nextY = camPosY + sin(radYaw) * moveSpeed`.
+    *   Penggunaan $\cos$ dan $\sin$ memproyeksikan arah hadap kamera menjadi vektor pergeseran koordinat X dan Y di bidang labirin.
+
+### Q7: "Apa fungsi dari `glPushMatrix()` dan `glPopMatrix()` di fungsi `drawNRP3D`?"
+*   **Jawaban**: `glPushMatrix()` menduplikasi dan menyimpan matriks transformasi aktif saat ini ke dalam tumpukan (*stack*). Kita kemudian bebas melakukan rotasi lokal (`glRotated`) pada objek NRP tanpa memengaruhi objek lainnya. Setelah selesai menggambar NRP, `glPopMatrix()` mengambil kembali matriks yang disimpan sebelumnya, mengembalikan sistem koordinat ke keadaan semula sebelum NRP diputar.
+
+### Q8: "Mengapa kita harus mendefinisikan normal vektor (`glNormal3f`) untuk setiap sisi kubus?"
+*   **Jawaban**: Vektor normal memberi tahu OpenGL arah hadap permukaan secara spasial. OpenGL membutuhkan informasi ini untuk menghitung seberapa besar intensitas cahaya lampu (diffuse & specular) yang memantul dari permukaan tersebut ke mata kamera berdasarkan hukum pemantulan cahaya Phong/Lambert. Tanpa normal vektor, pencahayaan tidak akan berfungsi dan objek tampak gelap gulita atau datar tanpa dimensi.
+
+---
+
+## 3. Pustaka (Libraries) & API yang Digunakan
 
 Aplikasi ini menggunakan beberapa pustaka C++ standar dan pustaka grafis OpenGL/GLUT:
 
@@ -89,7 +121,7 @@ Aplikasi ini menggunakan beberapa pustaka C++ standar dan pustaka grafis OpenGL/
 
 ---
 
-## 3. Kamus Istilah API OpenGL & GLUT (Fungsi Bawaan)
+## 4. Kamus Istilah API OpenGL & GLUT (Fungsi Bawaan)
 
 Asisten dosen sering menanyakan arti dari fungsi-fungsi OpenGL/GLUT yang diawali dengan awalan `gl`, `glu`, atau `glut`. Berikut adalah fungsi-fungsi yang digunakan dalam kode ini beserta kegunaannya:
 
@@ -144,7 +176,7 @@ Asisten dosen sering menanyakan arti dari fungsi-fungsi OpenGL/GLUT yang diawali
 
 ---
 
-## 4. Alur Eksekusi Program (Flow of Execution)
+## 5. Alur Eksekusi Program (Flow of Execution)
 
 Berikut adalah urutan jalannya program dari awal dijalankan hingga interaksi pengguna terjadi:
 
@@ -172,7 +204,7 @@ graph TD
 
 ---
 
-## 5. Analisis Struktur Fungsi & Sample Code
+## 6. Analisis Struktur Fungsi & Sample Code
 
 Berikut adalah daftar fungsi utama di dalam kode `main.cpp` beserta cuplikan kodenya untuk dipelajari:
 
@@ -274,7 +306,7 @@ Bagian ini mengatur bagaimana dinding digambar tembus pandang jika diaktifkan.
 
 ---
 
-## 6. Studi Kasus: "Jika Diubah Jadi Apa?" (Panduan Modifikasi)
+## 7. Studi Kasus: "Jika Diubah Jadi Apa?" (Panduan Modifikasi)
 
 Asisten praktikum sering menanyakan pemahaman kode dengan skenario perubahan. Berikut adalah jawaban cepat yang dapat Anda berikan:
 
@@ -325,7 +357,7 @@ Asisten praktikum sering menanyakan pemahaman kode dengan skenario perubahan. Be
 
 ---
 
-## 7. Cheat Sheet Kontrol Cepat Asistensi
+## 8. Cheat Sheet Kontrol Cepat Asistensi
 
 | Kategori | Tombol | Aksi / Efek Visual |
 | :--- | :--- | :--- |
